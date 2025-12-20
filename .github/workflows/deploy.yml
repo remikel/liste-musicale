@@ -29,4 +29,4 @@ jobs:
             php bin/console cache:clear --env=prod --no-debug
             php bin/console cache:warmup --env=prod --no-debug
             php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
-            echo "✅ Deployment completed successfully!"
+            echo "✅  Deployment completed successfully!"
