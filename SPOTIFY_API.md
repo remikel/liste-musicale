@@ -11,8 +11,8 @@ L'application utilise maintenant l'API Spotify pour :
 
 Les identifiants sont dans le fichier `.env` :
 ```env
-SPOTIFY_CLIENT_ID=REDACTED_CLIENT_ID
-SPOTIFY_CLIENT_SECRET=REDACTED_CLIENT_SECRET
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 ```
 
 ## Nouveaux Endpoints
