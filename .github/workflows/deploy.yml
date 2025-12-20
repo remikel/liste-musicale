@@ -3,7 +3,7 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -15,72 +15,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          php-version: '8.2'
-          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, zip
-          coverage: none
-
-      - name: Validate composer.json
-        run: composer validate --strict
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
-      - name: Install dependencies
-        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
-
-      - name: Create .env file
-        run: |
-          echo "APP_ENV=prod" > .env
-          echo "APP_SECRET=${{ secrets.APP_SECRET }}" >> .env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "SPOTIFY_CLIENT_ID=${{ secrets.SPOTIFY_CLIENT_ID }}" >> .env
-          echo "SPOTIFY_CLIENT_SECRET=${{ secrets.SPOTIFY_CLIENT_SECRET }}" >> .env
-          echo "MESSENGER_TRANSPORT_DSN=doctrine://default?auto_setup=0" >> .env
-          echo "MAILER_DSN=null://null" >> .env
-
-      - name: Dump environment variables
-        run: composer dump-env prod
-
-      - name: Clear and warmup cache
-        run: |
-          php bin/console cache:clear --env=prod --no-debug
-          php bin/console cache:warmup --env=prod --no-debug
-
-      - name: Deploy to server via SSH
-        uses: easingthemes/ssh-deploy@v5.0.3
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          REMOTE_HOST: ${{ secrets.REMOTE_HOST }}
-          REMOTE_USER: ${{ secrets.REMOTE_USER }}
-          TARGET: ${{ secrets.REMOTE_TARGET }}
-          EXCLUDE: "/.git/, /.github/, /node_modules/, /var/, /vendor/, /.env.local, /.env.*.local"
-          SCRIPT_BEFORE: |
-            echo "Starting deployment..."
-            mkdir -p ${{ secrets.REMOTE_TARGET }}
-          SCRIPT_AFTER: |
-            cd ${{ secrets.REMOTE_TARGET }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: root
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            cd /home/wqktajhw/liste-musicale
+            git pull origin master
             composer install --no-dev --optimize-autoloader --no-interaction
             php bin/console cache:clear --env=prod --no-debug
             php bin/console cache:warmup --env=prod --no-debug
             php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
-            echo "Deployment completed successfully!"
-
-      - name: Notify deployment status
-        if: always()
-        run: |
-          if [ ${{ job.status }} == 'success' ]; then
-            echo "✅ Deployment successful!"
-          else
-            echo "❌ Deployment failed!"
-          fi
+            echo "✅ Deployment completed successfully!"
