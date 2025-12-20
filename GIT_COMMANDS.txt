@@ -1,0 +1,172 @@
+# ===============================================
+# COMMANDES GIT POUR POUSSER VERS GITHUB
+# Repository: git@github.com:remikel/liste-musicale.git
+# ===============================================
+
+# -------------------------------------------
+# 1. VÉRIFICATION AVANT DE COMMENCER
+# -------------------------------------------
+
+# Vérifier que .env n'est PAS tracké
+git status | grep .env
+# Résultat attendu : rien (ou seulement .env.example)
+
+# Vérifier le .gitignore
+cat .gitignore | grep "/.env"
+# Résultat attendu : /.env
+
+
+# -------------------------------------------
+# 2. INITIALISER LE REPOSITORY LOCAL
+# -------------------------------------------
+
+cd c:\Users\Remi\playlist-app
+git init
+git branch -M main
+
+
+# -------------------------------------------
+# 3. AJOUTER LE REMOTE GITHUB
+# -------------------------------------------
+
+git remote add origin git@github.com:remikel/liste-musicale.git
+git remote -v
+
+
+# -------------------------------------------
+# 4. PREMIER COMMIT
+# -------------------------------------------
+
+# Ajouter tous les fichiers
+git add .
+
+# Vérifier ce qui sera commité
+git status
+# IMPORTANT : .env ne doit PAS apparaître !
+
+# Commiter
+git commit -m "Initial commit - Playlist Collaborative App
+
+- Intégration complète Spotify (recherche, import, export)
+- Authentification OAuth2 pour Spotify
+- Import de playlists Spotify
+- Export vers Spotify
+- Système de sessions collaboratives
+- GitHub Actions pour CI/CD
+- Documentation complète"
+
+
+# -------------------------------------------
+# 5. POUSSER VERS GITHUB
+# -------------------------------------------
+
+git push -u origin main
+
+
+# ===============================================
+# COMMANDES POUR LES PUSH SUIVANTS
+# ===============================================
+
+# Ajouter les modifications
+git add .
+
+# Commiter avec un message
+git commit -m "Description des modifications"
+
+# Pousser
+git push
+
+
+# ===============================================
+# COMMANDES UTILES
+# ===============================================
+
+# Voir l'état du repository
+git status
+
+# Voir l'historique
+git log --oneline
+
+# Voir les fichiers trackés
+git ls-files
+
+# Vérifier les remotes
+git remote -v
+
+# Créer une branche
+git checkout -b feature/nom-feature
+
+# Changer de branche
+git checkout main
+
+# Merger une branche
+git merge feature/nom-feature
+
+
+# ===============================================
+# SI .ENV EST DÉJÀ TRACKÉ PAR ERREUR
+# ===============================================
+
+# Retirer .env du tracking
+git rm --cached .env
+
+# Vérifier
+git status
+
+# Commiter la suppression
+git commit -m "Remove .env from version control"
+
+# Pousser
+git push
+
+
+# ===============================================
+# SECRETS GITHUB À CONFIGURER APRÈS LE PUSH
+# ===============================================
+
+# Allez sur : https://github.com/remikel/liste-musicale/settings/secrets/actions
+
+# Secrets à créer (8 au total) :
+
+1. APP_SECRET
+   Générer avec : php -r "echo bin2hex(random_bytes(32));"
+
+2. DATABASE_URL
+   Format : mysql://user:password@host:3306/database?serverVersion=mariadb-10.6.21&charset=utf8mb4
+
+3. SPOTIFY_CLIENT_ID
+   Depuis votre .env : REDACTED_CLIENT_ID
+
+4. SPOTIFY_CLIENT_SECRET
+   Depuis votre .env : REDACTED_CLIENT_SECRET
+
+5. SSH_PRIVATE_KEY
+   Votre clé privée SSH complète
+
+6. REMOTE_HOST
+   IP ou domaine du serveur : 192.168.1.100
+
+7. REMOTE_USER
+   User SSH : ubuntu
+
+8. REMOTE_TARGET
+   Chemin de déploiement : /var/www/playlist-app
+
+
+# ===============================================
+# REDIRECT URI SPOTIFY
+# ===============================================
+
+# Sur https://developer.spotify.com/dashboard
+# Dans les paramètres de votre app, ajoutez :
+
+Local :
+http://localhost:8000/spotify/auth/callback
+
+Production :
+https://votre-domaine.com/spotify/auth/callback
+
+
+# ===============================================
+# FIN
+# ===============================================

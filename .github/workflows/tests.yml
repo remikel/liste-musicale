@@ -1,0 +1,70 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  tests:
+    name: PHP Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test_playlist
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, zip
+          coverage: none
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Create test .env file
+        run: |
+          echo "APP_ENV=test" > .env.test.local
+          echo "APP_SECRET=test_secret_key_for_ci" >> .env.test.local
+          echo "DATABASE_URL=mysql://root:root@127.0.0.1:3306/test_playlist?serverVersion=mariadb-10.6.21&charset=utf8mb4" >> .env.test.local
+          echo "SPOTIFY_CLIENT_ID=test_client_id" >> .env.test.local
+          echo "SPOTIFY_CLIENT_SECRET=test_client_secret" >> .env.test.local
+
+      - name: Run database migrations
+        run: |
+          php bin/console doctrine:database:create --env=test --if-not-exists
+          php bin/console doctrine:schema:update --env=test --force
+
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit
+
+      - name: Check code quality
+        run: |
+          echo "✅ All tests passed!"

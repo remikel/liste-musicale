@@ -1,0 +1,536 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ session.name }} - Playlist{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h2 class="mb-0">{{ session.name }}</h2>
+                            <p class="text-muted mb-0">
+                                Code: <span class="badge bg-primary">{{ session.code }}</span> |
+                                Participant: <strong>{{ participant.name }}</strong>
+                            </p>
+                        </div>
+                        <a href="{{ path('app_home') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-house"></i> Accueil
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-search"></i> Rechercher des titres</h5>
+                        </div>
+                        <div class="card-body">
+                            {# Bouton importer playlist Spotify #}
+                            <div class="mb-3">
+                                <button id="importSpotifyBtn" class="btn btn-success w-100" onclick="handleSpotifyImport()">
+                                    <i class="bi bi-spotify"></i> Importer une playlist Spotify
+                                </button>
+                            </div>
+
+                            <div class="mb-3">
+                                <input type="text" id="searchInput" class="form-control form-control-lg"
+                                       placeholder="Rechercher un titre ou un artiste...">
+                            </div>
+                            <div id="searchResults" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="bi bi-music-note-list"></i> Mes titres</h5>
+                                <span id="trackCount" class="badge bg-light text-dark">0</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="myTracks" class="list-group mb-3" style="max-height: 350px; overflow-y: auto;">
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button id="validateBtn" class="btn btn-success btn-lg" disabled>
+                                    <i class="bi bi-check-circle"></i> Valider ma sélection
+                                </button>
+                            </div>
+                            <div class="text-center mt-3" id="maxTracksInfo"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-dark text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-list-stars"></i> Playlist générale de la session</h5>
+                        <span id="totalTracks" class="badge bg-light text-dark">0 titres</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="participantStats" class="mb-4">
+                    </div>
+                    <div class="mt-4">
+                        <h6>Exporter vers :</h6>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-success" onclick="exportToService('spotify')">
+                                <i class="bi bi-spotify"></i> Spotify
+                            </button>
+                            <button class="btn btn-danger" onclick="exportToService('youtube')">
+                                <i class="bi bi-youtube"></i> YouTube Music
+                            </button>
+                            <button class="btn btn-info text-white" onclick="exportToService('qobuz')">
+                                Qobuz
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Note: Vous devrez vous connecter au service pour exporter la playlist
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Modal pour sélectionner une playlist Spotify #}
+<div class="modal fade" id="spotifyPlaylistModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-spotify"></i> Sélectionner une playlist Spotify</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="spotifyPlaylistContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const sessionCode = '{{ session.code }}';
+let searchTimeout;
+let isValidated = false;
+let maxTracks = {{ session.maxTracksPerParticipant|default('null') }};
+
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    clearTimeout(searchTimeout);
+    const query = e.target.value.trim();
+
+    if (query.length < 2) {
+        document.getElementById('searchResults').innerHTML = '';
+        return;
+    }
+
+    searchTimeout = setTimeout(() => searchTracks(query), 500);
+});
+
+async function searchTracks(query) {
+    try {
+        const response = await fetch(`/session/${sessionCode}/search?q=${encodeURIComponent(query)}`);
+        const tracks = await response.json();
+
+        const resultsDiv = document.getElementById('searchResults');
+        resultsDiv.innerHTML = '';
+
+        if (tracks.length === 0) {
+            resultsDiv.innerHTML = '<div class="text-muted p-3">Aucun résultat trouvé</div>';
+            return;
+        }
+
+        tracks.forEach(track => {
+            const item = document.createElement('button');
+            item.className = 'list-group-item list-group-item-action d-flex align-items-center';
+            item.innerHTML = `
+                ${track.cover ? `<img src="${track.cover}" class="me-3" style="width: 50px; height: 50px; object-fit: cover;">` : ''}
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${track.title}</div>
+                    <small class="text-muted">${track.artist}</small>
+                </div>
+                <i class="bi bi-plus-circle fs-4 text-success"></i>
+            `;
+            item.onclick = () => addTrack(track);
+            resultsDiv.appendChild(item);
+        });
+    } catch (error) {
+        console.error('Erreur de recherche:', error);
+    }
+}
+
+async function addTrack(track) {
+    if (isValidated) {
+        alert('Vous avez déjà validé votre liste !');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/session/${sessionCode}/add-track`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: track.title,
+                artist: track.artist,
+                album: track.album,
+                duration: track.duration,
+                id: track.id,
+                uri: track.uri,
+                cover: track.cover
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+            alert(result.error);
+            return;
+        }
+
+        loadMyTracks();
+        loadAllTracks();
+    } catch (error) {
+        console.error('Erreur ajout:', error);
+    }
+}
+
+async function removeTrack(trackId) {
+    if (isValidated) {
+        alert('Vous avez déjà validé votre liste !');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/session/${sessionCode}/remove-track/${trackId}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            loadMyTracks();
+            loadAllTracks();
+        }
+    } catch (error) {
+        console.error('Erreur suppression:', error);
+    }
+}
+
+async function loadMyTracks() {
+    try {
+        const response = await fetch(`/session/${sessionCode}/my-tracks`);
+        const data = await response.json();
+
+        const tracksDiv = document.getElementById('myTracks');
+        const countSpan = document.getElementById('trackCount');
+        const validateBtn = document.getElementById('validateBtn');
+        const maxInfo = document.getElementById('maxTracksInfo');
+
+        isValidated = data.validated;
+        countSpan.textContent = data.tracks.length;
+
+        if (maxTracks) {
+            maxInfo.innerHTML = `<small class="text-muted">${data.tracks.length} / ${maxTracks} titres</small>`;
+        }
+
+        if (data.tracks.length === 0) {
+            tracksDiv.innerHTML = '<div class="text-muted p-3 text-center">Aucun titre ajouté</div>';
+            validateBtn.disabled = true;
+        } else {
+            tracksDiv.innerHTML = '';
+            data.tracks.forEach(track => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item d-flex align-items-center';
+                item.innerHTML = `
+                    ${track.cover ? `<img src="${track.cover}" class="me-3" style="width: 40px; height: 40px; object-fit: cover;">` : ''}
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${track.title}</div>
+                        <small class="text-muted">${track.artist}</small>
+                    </div>
+                    ${!isValidated ? `<button class="btn btn-sm btn-danger" onclick="removeTrack(${track.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>` : ''}
+                `;
+                tracksDiv.appendChild(item);
+            });
+
+            validateBtn.disabled = isValidated;
+            if (isValidated) {
+                validateBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Sélection validée';
+                validateBtn.classList.remove('btn-success');
+                validateBtn.classList.add('btn-secondary');
+            }
+        }
+    } catch (error) {
+        console.error('Erreur chargement:', error);
+    }
+}
+
+async function loadAllTracks() {
+    try {
+        const response = await fetch(`/session/${sessionCode}/all-tracks`);
+        const data = await response.json();
+
+        const statsDiv = document.getElementById('participantStats');
+        const totalTracksSpan = document.getElementById('totalTracks');
+
+        totalTracksSpan.textContent = `${data.total_tracks} titre${data.total_tracks > 1 ? 's' : ''}`;
+
+        if (data.participants.length === 0) {
+            statsDiv.innerHTML = '<div class="text-muted p-3 text-center">Aucun participant</div>';
+        } else {
+            statsDiv.innerHTML = '';
+            data.participants.forEach(participant => {
+                const item = document.createElement('div');
+                item.className = 'mb-2';
+
+                const percentage = participant.max ? (participant.count / participant.max * 100) : 0;
+                const progressColor = participant.validated ? 'success' : (percentage >= 100 ? 'warning' : 'info');
+
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                            <strong>${participant.name}</strong>
+                            ${participant.validated ? '<i class="bi bi-check-circle-fill text-success ms-1" title="Validé"></i>' : ''}
+                        </div>
+                        <span class="badge bg-${progressColor}">
+                            ${participant.count}${participant.max ? '/' + participant.max : ''}
+                        </span>
+                    </div>
+                    ${participant.max ? `
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-${progressColor}" role="progressbar"
+                                 style="width: ${Math.min(percentage, 100)}%"
+                                 aria-valuenow="${participant.count}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="${participant.max}">
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+                statsDiv.appendChild(item);
+            });
+        }
+    } catch (error) {
+        console.error('Erreur chargement playlist:', error);
+    }
+}
+
+document.getElementById('validateBtn').addEventListener('click', async function() {
+    if (confirm('Êtes-vous sûr de vouloir valider votre sélection ? Vous ne pourrez plus la modifier.')) {
+        try {
+            const response = await fetch(`/session/${sessionCode}/validate`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                loadMyTracks();
+                alert('Votre sélection a été validée !');
+            }
+        } catch (error) {
+            console.error('Erreur validation:', error);
+        }
+    }
+});
+
+function exportToService(service) {
+    if (service === 'spotify') {
+        exportToSpotify();
+    } else {
+        alert(`Pour exporter vers ${service.toUpperCase()}, vous devez configurer les clés API OAuth2.\n\nVeuillez consulter la documentation pour obtenir un access token et utiliser l'endpoint /export/${service}/${sessionCode}`);
+    }
+}
+
+// ========== SPOTIFY IMPORT/EXPORT ==========
+
+async function handleSpotifyImport() {
+    if (isValidated) {
+        alert('Vous avez déjà validé votre liste !');
+        return;
+    }
+
+    // Vérifier si l'utilisateur est connecté à Spotify
+    try {
+        const tokenResponse = await fetch('/spotify/auth/token');
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenData.authenticated) {
+            // Pas connecté, proposer de se connecter
+            if (confirm('Vous devez vous connecter à Spotify pour importer une playlist.\n\nVoulez-vous vous connecter maintenant ?')) {
+                const currentUrl = window.location.pathname;
+                window.location.href = `/spotify/auth/login?return_url=${encodeURIComponent(currentUrl)}`;
+            }
+            return;
+        }
+
+        // Connecté, afficher les playlists
+        showSpotifyPlaylists(tokenData.access_token);
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la vérification de l\'authentification Spotify');
+    }
+}
+
+async function showSpotifyPlaylists(accessToken) {
+    // Ouvrir le modal
+    const modal = new bootstrap.Modal(document.getElementById('spotifyPlaylistModal'));
+    modal.show();
+
+    const contentDiv = document.getElementById('spotifyPlaylistContent');
+    contentDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-success" role="status"></div><p class="mt-2">Chargement de vos playlists...</p></div>';
+
+    try {
+        const response = await fetch('/export/spotify/playlists', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ access_token: accessToken })
+        });
+
+        const data = await response.json();
+
+        if (!data.success || !data.playlists || data.playlists.length === 0) {
+            contentDiv.innerHTML = '<div class="alert alert-warning">Aucune playlist trouvée sur votre compte Spotify.</div>';
+            return;
+        }
+
+        // Afficher les playlists
+        let html = '<div class="list-group">';
+        data.playlists.forEach(playlist => {
+            html += `
+                <button class="list-group-item list-group-item-action d-flex align-items-center"
+                        onclick="importPlaylist('${playlist.id}', '${accessToken}')">
+                    ${playlist.image ? `<img src="${playlist.image}" class="me-3" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;">` : ''}
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">${escapeHtml(playlist.name)}</div>
+                        <small class="text-muted">${playlist.tracks_total} titre${playlist.tracks_total > 1 ? 's' : ''}</small>
+                        ${playlist.description ? `<br><small class="text-muted">${escapeHtml(playlist.description).substring(0, 100)}</small>` : ''}
+                    </div>
+                    <i class="bi bi-download fs-4 text-success"></i>
+                </button>
+            `;
+        });
+        html += '</div>';
+
+        contentDiv.innerHTML = html;
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        contentDiv.innerHTML = '<div class="alert alert-danger">Erreur lors du chargement des playlists.</div>';
+    }
+}
+
+async function importPlaylist(playlistId, accessToken) {
+    if (!confirm('Importer cette playlist ? Les titres seront ajoutés à votre sélection.')) {
+        return;
+    }
+
+    // Fermer le modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('spotifyPlaylistModal'));
+    modal.hide();
+
+    // Afficher un indicateur de chargement
+    const btn = document.getElementById('importSpotifyBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Import en cours...';
+
+    try {
+        const response = await fetch(`/export/spotify/import/${sessionCode}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                access_token: accessToken,
+                playlist_id: playlistId
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+            alert('Erreur: ' + result.error);
+        } else {
+            alert(`✅ ${result.tracks_imported} titre${result.tracks_imported > 1 ? 's importés' : ' importé'} sur ${result.tracks_total} !`);
+            loadMyTracks();
+            loadAllTracks();
+        }
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'import de la playlist');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function exportToSpotify() {
+    try {
+        const tokenResponse = await fetch('/spotify/auth/token');
+        const tokenData = await tokenResponse.json();
+
+        if (!tokenData.authenticated) {
+            if (confirm('Vous devez vous connecter à Spotify pour exporter la playlist.\n\nVoulez-vous vous connecter maintenant ?')) {
+                const currentUrl = window.location.pathname;
+                window.location.href = `/spotify/auth/login?return_url=${encodeURIComponent(currentUrl)}`;
+            }
+            return;
+        }
+
+        if (!confirm('Créer une playlist sur votre compte Spotify avec tous les titres de cette session ?')) {
+            return;
+        }
+
+        const response = await fetch(`/export/spotify/${sessionCode}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ access_token: tokenData.access_token })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ Playlist créée avec ${result.tracks_added} titres !`);
+            if (result.playlist_url) {
+                window.open(result.playlist_url, '_blank');
+            }
+        } else {
+            alert('Erreur: ' + result.error);
+        }
+
+    } catch (error) {
+        console.error('Erreur:', error);
+        alert('Erreur lors de l\'export vers Spotify');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ========== INITIALISATION ==========
+
+loadMyTracks();
+loadAllTracks();
+
+setInterval(loadAllTracks, 5000);
+</script>
+{% endblock %}

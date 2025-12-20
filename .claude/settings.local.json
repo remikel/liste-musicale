@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php bin/console make:migration:*)",
+      "Bash(php bin/console doctrine:schema:update:*)",
+      "Bash(mysql:*)",
+      "Bash(php bin/console:*)",
+      "Bash(php test_spotify.php:*)"
+    ]
+  }
+}
