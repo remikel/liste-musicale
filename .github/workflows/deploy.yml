@@ -25,8 +25,8 @@ jobs:
           script: |
             cd /home/wqktajhw/liste-musicale
             git pull origin master
-            composer install --no-dev --optimize-autoloader --no-interaction
-            php bin/console cache:clear --env=prod --no-debug
-            php bin/console cache:warmup --env=prod --no-debug
-            php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
-            echo "✅  Deployment completed successfully!"
+            /usr/local/php8.4/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction
+            /usr/local/php8.4/bin/php bin/console cache:clear --env=prod --no-debug
+            /usr/local/php8.4/bin/php bin/console cache:warmup --env=prod --no-debug
+            /usr/local/php8.4/bin/php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+            echo "✅ Deployment completed successfully!"
