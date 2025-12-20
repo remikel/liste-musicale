@@ -115,17 +115,11 @@ mysql://playlist_user:SecurePass123!@db.production.com:3306/playlist_prod?server
 
 ### Secret 3 : SPOTIFY_CLIENT_ID
 
-Copiez depuis votre `.env` local :
-```
-REDACTED_CLIENT_ID
-```
+Copiez depuis votre `.env` local (ne pas partager cette valeur)
 
 ### Secret 4 : SPOTIFY_CLIENT_SECRET
 
-Copiez depuis votre `.env` local :
-```
-REDACTED_CLIENT_SECRET
-```
+Copiez depuis votre `.env` local (ne pas partager cette valeur)
 
 ### Secrets 5-8 : SSH (pour le déploiement)
 

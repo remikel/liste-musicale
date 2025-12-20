@@ -191,7 +191,7 @@ Ces colonnes stockent :
 ```javascript
 // Rediriger vers Spotify pour l'authentification
 window.location.href = 'https://accounts.spotify.com/authorize?' +
-  'client_id=REDACTED_CLIENT_ID&' +
+  'client_id=YOUR_SPOTIFY_CLIENT_ID&' +
   'response_type=code&' +
   'redirect_uri=http://localhost:8000/spotify/callback&' +
   'scope=playlist-read-private playlist-modify-private playlist-modify-public';

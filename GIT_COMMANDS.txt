@@ -135,10 +135,10 @@ git push
    Format : mysql://user:password@host:3306/database?serverVersion=mariadb-10.6.21&charset=utf8mb4
 
 3. SPOTIFY_CLIENT_ID
-   Depuis votre .env : REDACTED_CLIENT_ID
+   Depuis votre .env
 
 4. SPOTIFY_CLIENT_SECRET
-   Depuis votre .env : REDACTED_CLIENT_SECRET
+   Depuis votre .env
 
 5. SSH_PRIVATE_KEY
    Votre clé privée SSH complète

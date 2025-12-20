@@ -5,7 +5,10 @@
       "Bash(php bin/console doctrine:schema:update:*)",
       "Bash(mysql:*)",
       "Bash(php bin/console:*)",
-      "Bash(php test_spotify.php:*)"
+      "Bash(php test_spotify.php:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

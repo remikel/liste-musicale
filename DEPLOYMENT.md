@@ -82,8 +82,8 @@ Exemple: /var/www/playlist-app
 |------------|-------------|---------|
 | `APP_SECRET` | Clé secrète Symfony | `a1b2c3d4e5f6...` |
 | `DATABASE_URL` | URL de connexion MySQL | `mysql://user:pass@host:3306/db?serverVersion=...` |
-| `SPOTIFY_CLIENT_ID` | Client ID Spotify | `REDACTED_CLIENT_ID` |
-| `SPOTIFY_CLIENT_SECRET` | Client Secret Spotify | `REDACTED_CLIENT_SECRET` |
+| `SPOTIFY_CLIENT_ID` | Client ID Spotify | Depuis votre .env |
+| `SPOTIFY_CLIENT_SECRET` | Client Secret Spotify | Depuis votre .env |
 | `SSH_PRIVATE_KEY` | Clé SSH privée | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `REMOTE_HOST` | Adresse du serveur | `192.168.1.100` |
 | `REMOTE_USER` | User SSH | `ubuntu` |
