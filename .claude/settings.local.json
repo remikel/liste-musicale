@@ -8,7 +8,10 @@
       "Bash(php test_spotify.php:*)",
       "Bash(git filter-branch:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git rm:*)",
+      "Bash(pip install:*)",
+      "Bash(export FILTER_BRANCH_SQUELCH_WARNING=1)"
     ]
   }
 }
