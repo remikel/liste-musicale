@@ -17,78 +17,6 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/export')]
 class ExportController extends AbstractController
 {
-    #[Route('/spotify/{code}', name: 'app_export_spotify', methods: ['POST'])]
-    public function spotify(
-        string $code,
-        Request $request,
-        EntityManagerInterface $em,
-        ExportService $exportService
-    ): JsonResponse {
-        $session = $em->getRepository(Session::class)->findOneBy(['code' => strtoupper($code)]);
-
-        if (!$session) {
-            return new JsonResponse(['error' => 'Session introuvable.'], 404);
-        }
-
-        $data = json_decode($request->getContent(), true);
-        $accessToken = $data['access_token'] ?? null;
-
-        if (!$accessToken) {
-            return new JsonResponse(['error' => 'Token d\'accès requis.'], 400);
-        }
-
-        $result = $exportService->exportToSpotify($session, $accessToken);
-        return new JsonResponse($result);
-    }
-
-    #[Route('/youtube/{code}', name: 'app_export_youtube', methods: ['POST'])]
-    public function youtube(
-        string $code,
-        Request $request,
-        EntityManagerInterface $em,
-        ExportService $exportService
-    ): JsonResponse {
-        $session = $em->getRepository(Session::class)->findOneBy(['code' => strtoupper($code)]);
-
-        if (!$session) {
-            return new JsonResponse(['error' => 'Session introuvable.'], 404);
-        }
-
-        $data = json_decode($request->getContent(), true);
-        $accessToken = $data['access_token'] ?? null;
-
-        if (!$accessToken) {
-            return new JsonResponse(['error' => 'Token d\'accès requis.'], 400);
-        }
-
-        $result = $exportService->exportToYouTubeMusic($session, $accessToken);
-        return new JsonResponse($result);
-    }
-
-    #[Route('/qobuz/{code}', name: 'app_export_qobuz', methods: ['POST'])]
-    public function qobuz(
-        string $code,
-        Request $request,
-        EntityManagerInterface $em,
-        ExportService $exportService
-    ): JsonResponse {
-        $session = $em->getRepository(Session::class)->findOneBy(['code' => strtoupper($code)]);
-
-        if (!$session) {
-            return new JsonResponse(['error' => 'Session introuvable.'], 404);
-        }
-
-        $data = json_decode($request->getContent(), true);
-        $accessToken = $data['access_token'] ?? null;
-
-        if (!$accessToken) {
-            return new JsonResponse(['error' => 'Token d\'accès requis.'], 400);
-        }
-
-        $result = $exportService->exportToQobuz($session, $accessToken);
-        return new JsonResponse($result);
-    }
-
     #[Route('/spotify/playlists', name: 'app_get_spotify_playlists', methods: ['POST'])]
     public function getSpotifyPlaylists(
         Request $request,
@@ -189,5 +117,77 @@ class ExportController extends AbstractController
         } catch (\Exception $e) {
             return new JsonResponse(['error' => $e->getMessage()], 500);
         }
+    }
+
+    #[Route('/spotify/{code}', name: 'app_export_spotify', methods: ['POST'])]
+    public function spotify(
+        string $code,
+        Request $request,
+        EntityManagerInterface $em,
+        ExportService $exportService
+    ): JsonResponse {
+        $session = $em->getRepository(Session::class)->findOneBy(['code' => strtoupper($code)]);
+
+        if (!$session) {
+            return new JsonResponse(['error' => 'Session introuvable.'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $accessToken = $data['access_token'] ?? null;
+
+        if (!$accessToken) {
+            return new JsonResponse(['error' => 'Token d\'accès requis.'], 400);
+        }
+
+        $result = $exportService->exportToSpotify($session, $accessToken);
+        return new JsonResponse($result);
+    }
+
+    #[Route('/youtube/{code}', name: 'app_export_youtube', methods: ['POST'])]
+    public function youtube(
+        string $code,
+        Request $request,
+        EntityManagerInterface $em,
+        ExportService $exportService
+    ): JsonResponse {
+        $session = $em->getRepository(Session::class)->findOneBy(['code' => strtoupper($code)]);
+
+        if (!$session) {
+            return new JsonResponse(['error' => 'Session introuvable.'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $accessToken = $data['access_token'] ?? null;
+
+        if (!$accessToken) {
+            return new JsonResponse(['error' => 'Token d\'accès requis.'], 400);
+        }
+
+        $result = $exportService->exportToYouTubeMusic($session, $accessToken);
+        return new JsonResponse($result);
+    }
+
+    #[Route('/qobuz/{code}', name: 'app_export_qobuz', methods: ['POST'])]
+    public function qobuz(
+        string $code,
+        Request $request,
+        EntityManagerInterface $em,
+        ExportService $exportService
+    ): JsonResponse {
+        $session = $em->getRepository(Session::class)->findOneBy(['code' => strtoupper($code)]);
+
+        if (!$session) {
+            return new JsonResponse(['error' => 'Session introuvable.'], 404);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $accessToken = $data['access_token'] ?? null;
+
+        if (!$accessToken) {
+            return new JsonResponse(['error' => 'Token d\'accès requis.'], 400);
+        }
+
+        $result = $exportService->exportToQobuz($session, $accessToken);
+        return new JsonResponse($result);
     }
 }
