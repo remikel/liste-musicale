@@ -405,8 +405,13 @@ async function showSpotifyPlaylists(accessToken) {
 
         const data = await response.json();
 
+        console.log('Response data:', data);
+        console.log('Playlists:', data.playlists);
+        console.log('Playlists length:', data.playlists ? data.playlists.length : 0);
+
         if (!data.success || !data.playlists || data.playlists.length === 0) {
-            contentDiv.innerHTML = '<div class="alert alert-warning">Aucune playlist trouvée sur votre compte Spotify.</div>';
+            console.log('No playlists condition triggered');
+            contentDiv.innerHTML = '<div class="alert alert-warning">Aucune playlist trouvée sur votre compte Spotify.<br><small>Détails: success=' + data.success + ', playlists=' + (data.playlists ? data.playlists.length : 'null') + '</small></div>';
             return;
         }
 
