@@ -19,3 +19,9 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+
+###> claude-code ###
+.claude/settings.local.json
+.claude/
+*.local.json
+###< claude-code ###

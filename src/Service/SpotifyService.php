@@ -149,9 +149,15 @@ class SpotifyService
 
             $data = $response->toArray();
 
+            // Debug
+            error_log('Spotify API response: ' . json_encode($data));
+
             if (!isset($data['items'])) {
+                error_log('No items in response');
                 return [];
             }
+
+            error_log('Items count: ' . count($data['items']));
 
             return array_map(function ($playlist) {
                 return [
@@ -165,6 +171,7 @@ class SpotifyService
             }, $data['items']);
 
         } catch (\Exception $e) {
+            error_log('Exception in getUserPlaylists: ' . $e->getMessage());
             throw new \RuntimeException('Impossible de récupérer les playlists: ' . $e->getMessage());
         }
     }

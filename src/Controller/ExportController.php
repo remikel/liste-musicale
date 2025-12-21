@@ -103,8 +103,13 @@ class ExportController extends AbstractController
 
         try {
             $playlists = $spotifyService->getUserPlaylists($accessToken);
+
+            // Debug: log le nombre de playlists
+            error_log('Playlists trouvées: ' . count($playlists));
+
             return new JsonResponse(['success' => true, 'playlists' => $playlists]);
         } catch (\Exception $e) {
+            error_log('Erreur getUserPlaylists: ' . $e->getMessage());
             return new JsonResponse(['error' => $e->getMessage()], 500);
         }
     }
