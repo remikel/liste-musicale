@@ -117,11 +117,96 @@
     </div>
 </div>
 
+{# Modal générique pour les messages (succès/erreur/info) #}
+<div class="modal fade" id="messageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" id="messageModalHeader">
+                <h5 class="modal-title" id="messageModalTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="messageModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Modal de confirmation #}
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalTitle">Confirmation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="confirmModalConfirm">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const sessionCode = '{{ session.code }}';
 let searchTimeout;
 let isValidated = false;
 let maxTracks = {{ session.maxTracksPerParticipant|default('null') }};
+
+// ========== MODAL HELPERS ==========
+
+function showMessage(message, type = 'info', title = null) {
+    const modal = new bootstrap.Modal(document.getElementById('messageModal'));
+    const header = document.getElementById('messageModalHeader');
+    const titleEl = document.getElementById('messageModalTitle');
+    const body = document.getElementById('messageModalBody');
+
+    // Reset classes
+    header.className = 'modal-header';
+
+    // Set type-specific styles
+    if (type === 'success') {
+        header.classList.add('bg-success', 'text-white');
+        titleEl.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>' + (title || 'Succès');
+    } else if (type === 'error') {
+        header.classList.add('bg-danger', 'text-white');
+        titleEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i>' + (title || 'Erreur');
+    } else if (type === 'warning') {
+        header.classList.add('bg-warning', 'text-dark');
+        titleEl.innerHTML = '<i class="bi bi-exclamation-circle-fill me-2"></i>' + (title || 'Attention');
+    } else {
+        header.classList.add('bg-info', 'text-white');
+        titleEl.innerHTML = '<i class="bi bi-info-circle-fill me-2"></i>' + (title || 'Information');
+    }
+
+    body.innerHTML = message;
+    modal.show();
+}
+
+function showConfirm(message, onConfirm, title = 'Confirmation') {
+    const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    const titleEl = document.getElementById('confirmModalTitle');
+    const body = document.getElementById('confirmModalBody');
+    const confirmBtn = document.getElementById('confirmModalConfirm');
+
+    titleEl.textContent = title;
+    body.innerHTML = message;
+
+    // Remove old event listeners by cloning the button
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    // Add new event listener
+    newConfirmBtn.addEventListener('click', function() {
+        modal.hide();
+        if (onConfirm) onConfirm();
+    });
+
+    modal.show();
+}
 
 document.getElementById('searchInput').addEventListener('input', function(e) {
     clearTimeout(searchTimeout);
@@ -169,7 +254,7 @@ async function searchTracks(query) {
 
 async function addTrack(track) {
     if (isValidated) {
-        alert('Vous avez déjà validé votre liste !');
+        showMessage('Vous avez déjà validé votre liste !', 'warning');
         return;
     }
 
@@ -191,7 +276,7 @@ async function addTrack(track) {
         const result = await response.json();
 
         if (result.error) {
-            alert(result.error);
+            showMessage(result.error, 'error');
             return;
         }
 
@@ -204,7 +289,7 @@ async function addTrack(track) {
 
 async function removeTrack(trackId) {
     if (isValidated) {
-        alert('Vous avez déjà validé votre liste !');
+        showMessage('Vous avez déjà validé votre liste !', 'warning');
         return;
     }
 
@@ -325,29 +410,61 @@ async function loadAllTracks() {
 }
 
 document.getElementById('validateBtn').addEventListener('click', async function() {
-    if (confirm('Êtes-vous sûr de vouloir valider votre sélection ? Vous ne pourrez plus la modifier.')) {
-        try {
-            const response = await fetch(`/session/${sessionCode}/validate`, {
-                method: 'POST'
-            });
+    // Récupérer le nombre actuel de titres
+    const currentTracksCount = parseInt(document.getElementById('trackCount').textContent);
 
-            const result = await response.json();
+    // Construire le message de confirmation
+    let confirmMessage = '';
 
-            if (result.success) {
-                loadMyTracks();
-                alert('Votre sélection a été validée !');
-            }
-        } catch (error) {
-            console.error('Erreur validation:', error);
-        }
+    // Si un maximum est défini et qu'il n'est pas atteint, afficher un gros avertissement
+    if (maxTracks && currentTracksCount < maxTracks) {
+        confirmMessage = `
+            <div class="alert alert-danger mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill fs-3 d-block mb-2"></i>
+                <h5 class="alert-heading">ATTENTION : SÉLECTION INCOMPLÈTE</h5>
+                <p class="mb-0">Vous avez seulement <strong>${currentTracksCount} titre${currentTracksCount > 1 ? 's' : ''}</strong> sur <strong>${maxTracks} maximum autorisés</strong>.</p>
+                <p class="mb-0 mt-2">Vous pouvez encore ajouter <strong>${maxTracks - currentTracksCount} titre${(maxTracks - currentTracksCount) > 1 ? 's' : ''}</strong>.</p>
+            </div>
+            <p><strong>Cette action est définitive.</strong> Vous ne pourrez plus modifier votre sélection après validation.</p>
+            <p class="text-muted mb-0">Voulez-vous vraiment valider maintenant ?</p>
+        `;
+    } else {
+        confirmMessage = `
+            <p><strong>Cette action est définitive.</strong> Vous ne pourrez plus modifier votre sélection après validation.</p>
+            <p class="text-muted mb-0">Êtes-vous sûr de vouloir continuer ?</p>
+        `;
     }
+
+    showConfirm(
+        confirmMessage,
+        async function() {
+            try {
+                const response = await fetch(`/session/${sessionCode}/validate`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    loadMyTracks();
+                    showMessage('Votre sélection a été validée !', 'success');
+                }
+            } catch (error) {
+                console.error('Erreur validation:', error);
+            }
+        },
+        'Valider la sélection'
+    );
 });
 
 function exportToService(service) {
     if (service === 'spotify') {
         exportToSpotify();
     } else {
-        alert(`Pour exporter vers ${service.toUpperCase()}, vous devez configurer les clés API OAuth2.\n\nVeuillez consulter la documentation pour obtenir un access token et utiliser l'endpoint /export/${service}/${sessionCode}`);
+        showMessage(
+            `Pour exporter vers ${service.toUpperCase()}, vous devez configurer les clés API OAuth2.<br><br>Veuillez consulter la documentation pour obtenir un access token et utiliser l'endpoint /export/${service}/${sessionCode}`,
+            'info'
+        );
     }
 }
 
@@ -355,7 +472,7 @@ function exportToService(service) {
 
 async function handleSpotifyImport() {
     if (isValidated) {
-        alert('Vous avez déjà validé votre liste !');
+        showMessage('Vous avez déjà validé votre liste !', 'warning');
         return;
     }
 
@@ -366,10 +483,14 @@ async function handleSpotifyImport() {
 
         if (!tokenData.authenticated) {
             // Pas connecté, proposer de se connecter
-            if (confirm('Vous devez vous connecter à Spotify pour importer une playlist.\n\nVoulez-vous vous connecter maintenant ?')) {
-                const currentUrl = window.location.pathname;
-                window.location.href = `/spotify/auth/login?return_url=${encodeURIComponent(currentUrl)}`;
-            }
+            showConfirm(
+                'Vous devez vous connecter à Spotify pour importer une playlist.<br><br>Voulez-vous vous connecter maintenant ?',
+                function() {
+                    const currentUrl = window.location.pathname;
+                    window.location.href = `/spotify/auth/login?return_url=${encodeURIComponent(currentUrl)}`;
+                },
+                'Connexion Spotify requise'
+            );
             return;
         }
 
@@ -378,7 +499,7 @@ async function handleSpotifyImport() {
 
     } catch (error) {
         console.error('Erreur:', error);
-        alert('Erreur lors de la vérification de l\'authentification Spotify');
+        showMessage('Erreur lors de la vérification de l\'authentification Spotify', 'error');
     }
 }
 
@@ -436,47 +557,53 @@ async function showSpotifyPlaylists(accessToken) {
 }
 
 async function importPlaylist(playlistId, accessToken) {
-    if (!confirm('Importer cette playlist ? Les titres seront ajoutés à votre sélection.')) {
-        return;
-    }
+    showConfirm(
+        'Importer cette playlist ? Les titres seront ajoutés à votre sélection.',
+        async function() {
+            // Fermer le modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('spotifyPlaylistModal'));
+            modal.hide();
 
-    // Fermer le modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('spotifyPlaylistModal'));
-    modal.hide();
+            // Afficher un indicateur de chargement
+            const btn = document.getElementById('importSpotifyBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Import en cours...';
 
-    // Afficher un indicateur de chargement
-    const btn = document.getElementById('importSpotifyBtn');
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Import en cours...';
+            try {
+                const response = await fetch(`/export/spotify/import/${sessionCode}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        access_token: accessToken,
+                        playlist_id: playlistId
+                    })
+                });
 
-    try {
-        const response = await fetch(`/export/spotify/import/${sessionCode}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                access_token: accessToken,
-                playlist_id: playlistId
-            })
-        });
+                const result = await response.json();
 
-        const result = await response.json();
+                if (result.error) {
+                    showMessage('Erreur: ' + result.error, 'error');
+                } else {
+                    showMessage(
+                        `${result.tracks_imported} titre${result.tracks_imported > 1 ? 's importés' : ' importé'} sur ${result.tracks_total} !`,
+                        'success',
+                        'Import réussi'
+                    );
+                    loadMyTracks();
+                    loadAllTracks();
+                }
 
-        if (result.error) {
-            alert('Erreur: ' + result.error);
-        } else {
-            alert(`✅ ${result.tracks_imported} titre${result.tracks_imported > 1 ? 's importés' : ' importé'} sur ${result.tracks_total} !`);
-            loadMyTracks();
-            loadAllTracks();
-        }
-
-    } catch (error) {
-        console.error('Erreur:', error);
-        alert('Erreur lors de l\'import de la playlist');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showMessage('Erreur lors de l\'import de la playlist', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+        'Importer la playlist'
+    );
 }
 
 async function exportToSpotify() {
@@ -485,37 +612,52 @@ async function exportToSpotify() {
         const tokenData = await tokenResponse.json();
 
         if (!tokenData.authenticated) {
-            if (confirm('Vous devez vous connecter à Spotify pour exporter la playlist.\n\nVoulez-vous vous connecter maintenant ?')) {
-                const currentUrl = window.location.pathname;
-                window.location.href = `/spotify/auth/login?return_url=${encodeURIComponent(currentUrl)}`;
-            }
+            showConfirm(
+                'Vous devez vous connecter à Spotify pour exporter la playlist.<br><br>Voulez-vous vous connecter maintenant ?',
+                function() {
+                    const currentUrl = window.location.pathname;
+                    window.location.href = `/spotify/auth/login?return_url=${encodeURIComponent(currentUrl)}`;
+                },
+                'Connexion Spotify requise'
+            );
             return;
         }
 
-        if (!confirm('Créer une playlist sur votre compte Spotify avec tous les titres de cette session ?')) {
-            return;
-        }
+        showConfirm(
+            'Créer une playlist sur votre compte Spotify avec tous les titres de cette session ?',
+            async function() {
+                try {
+                    const response = await fetch(`/export/spotify/${sessionCode}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ access_token: tokenData.access_token })
+                    });
 
-        const response = await fetch(`/export/spotify/${sessionCode}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ access_token: tokenData.access_token })
-        });
+                    const result = await response.json();
 
-        const result = await response.json();
-
-        if (result.success) {
-            alert(`✅ Playlist créée avec ${result.tracks_added} titres !`);
-            if (result.playlist_url) {
-                window.open(result.playlist_url, '_blank');
-            }
-        } else {
-            alert('Erreur: ' + result.error);
-        }
+                    if (result.success) {
+                        showMessage(
+                            `Playlist créée avec ${result.tracks_added} titres !`,
+                            'success',
+                            'Export réussi'
+                        );
+                        if (result.playlist_url) {
+                            window.open(result.playlist_url, '_blank');
+                        }
+                    } else {
+                        showMessage('Erreur: ' + result.error, 'error');
+                    }
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    showMessage('Erreur lors de l\'export vers Spotify', 'error');
+                }
+            },
+            'Exporter vers Spotify'
+        );
 
     } catch (error) {
         console.error('Erreur:', error);
-        alert('Erreur lors de l\'export vers Spotify');
+        showMessage('Erreur lors de l\'export vers Spotify', 'error');
     }
 }
 
