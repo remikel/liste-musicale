@@ -36,6 +36,9 @@ class ExportService
             return ['success' => false, 'error' => 'Aucun titre trouvé sur Spotify'];
         }
 
+        // Mélange aléatoirement les titres
+        shuffle($trackUris);
+
         // Utilise SpotifyService pour créer la playlist
         return $this->spotifyService->createPlaylist(
             $accessToken,
