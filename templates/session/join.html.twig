@@ -30,15 +30,87 @@
                     {% endfor %}
 
                     <form action="{{ path('app_session_enter', {code: session.code}) }}" method="POST">
-                        <div class="mb-4">
-                            <label for="participant_name" class="form-label">Votre nom</label>
-                            <input type="text" class="form-control form-control-lg" id="participant_name"
-                                   name="participant_name" placeholder="Entrez votre nom" required autofocus>
-                        </div>
+                        {% if session.participants|length > 0 %}
+                            <div class="mb-4">
+                                <label class="form-label">Choisissez votre mode d'accès</label>
+                                <div class="btn-group w-100 mb-3" role="group">
+                                    <input type="radio" class="btn-check" name="mode" id="mode_existing" value="existing" checked autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="mode_existing">
+                                        <i class="bi bi-person-check"></i> Reprendre ma session
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="mode" id="mode_new" value="new" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="mode_new">
+                                        <i class="bi bi-person-plus"></i> Nouveau participant
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="existing_participant_section" class="mb-4">
+                                <label for="participant_id" class="form-label">Sélectionnez votre nom</label>
+                                <select class="form-select form-select-lg" id="participant_id" name="participant_id">
+                                    <option value="">-- Choisissez votre nom --</option>
+                                    {% for participant in session.participants %}
+                                        <option value="{{ participant.id }}">
+                                            {{ participant.name }}
+                                            {% if participant.validated %}
+                                                ✓ (Validé - {{ participant.tracks|length }} titres)
+                                            {% else %}
+                                                ({{ participant.tracks|length }} titre{% if participant.tracks|length > 1 %}s{% endif %})
+                                            {% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div id="new_participant_section" class="mb-4" style="display: none;">
+                                <label for="participant_name" class="form-label">Votre nom</label>
+                                <input type="text" class="form-control form-control-lg" id="participant_name"
+                                       name="participant_name" placeholder="Entrez votre nom">
+                            </div>
+                        {% else %}
+                            <div class="mb-4">
+                                <label for="participant_name" class="form-label">Votre nom</label>
+                                <input type="text" class="form-control form-control-lg" id="participant_name"
+                                       name="participant_name" placeholder="Entrez votre nom" required autofocus>
+                            </div>
+                        {% endif %}
+
                         <button type="submit" class="btn btn-primary w-100 btn-lg">
                             <i class="bi bi-check-circle"></i> Rejoindre la session
                         </button>
                     </form>
+
+                    {% if session.participants|length > 0 %}
+                        <script>
+                            const modeExisting = document.getElementById('mode_existing');
+                            const modeNew = document.getElementById('mode_new');
+                            const existingSection = document.getElementById('existing_participant_section');
+                            const newSection = document.getElementById('new_participant_section');
+                            const participantId = document.getElementById('participant_id');
+                            const participantName = document.getElementById('participant_name');
+
+                            function updateSections() {
+                                if (modeExisting.checked) {
+                                    existingSection.style.display = 'block';
+                                    newSection.style.display = 'none';
+                                    participantId.required = true;
+                                    participantName.required = false;
+                                    participantName.value = '';
+                                } else {
+                                    existingSection.style.display = 'none';
+                                    newSection.style.display = 'block';
+                                    participantId.required = false;
+                                    participantId.value = '';
+                                    participantName.required = true;
+                                }
+                            }
+
+                            modeExisting.addEventListener('change', updateSections);
+                            modeNew.addEventListener('change', updateSections);
+                            updateSections();
+                        </script>
+                    {% endif %}
 
                     <div class="text-center mt-3">
                         <a href="{{ path('app_home') }}" class="text-muted">

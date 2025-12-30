@@ -60,19 +60,34 @@ class SessionController extends AbstractController
             return $this->redirectToRoute('app_home');
         }
 
-        $name = $request->request->get('participant_name');
+        $participantId = $request->request->get('participant_id');
+        $participantName = $request->request->get('participant_name');
 
-        if (empty($name)) {
-            $this->addFlash('error', 'Le nom est requis.');
+        $participant = null;
+
+        // Si un participant existant est sélectionné
+        if (!empty($participantId)) {
+            $participant = $em->getRepository(Participant::class)->find($participantId);
+
+            // Vérifier que le participant appartient bien à cette session
+            if (!$participant || $participant->getSession() !== $session) {
+                $this->addFlash('error', 'Participant invalide.');
+                return $this->redirectToRoute('app_join_session', ['code' => $code]);
+            }
+        }
+        // Sinon, créer un nouveau participant
+        elseif (!empty($participantName)) {
+            $participant = new Participant();
+            $participant->setName($participantName);
+            $participant->setSession($session);
+
+            $em->persist($participant);
+            $em->flush();
+        }
+        else {
+            $this->addFlash('error', 'Veuillez sélectionner un participant ou entrer votre nom.');
             return $this->redirectToRoute('app_join_session', ['code' => $code]);
         }
-
-        $participant = new Participant();
-        $participant->setName($name);
-        $participant->setSession($session);
-
-        $em->persist($participant);
-        $em->flush();
 
         $sessionStorage->set('participant_id_' . $session->getId(), $participant->getId());
 
