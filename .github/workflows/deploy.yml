@@ -22,11 +22,17 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           port: ${{ secrets.DEPLOY_PORT }}
           key: ${{ secrets.DEPLOY_KEY }}
+          # set -e : sans lui, une commande en echec laissait le job passer au vert.
+          # C'est ainsi que le deploiement s'est declare « successful » pendant des
+          # mois alors qu'il ne faisait qu'un git pull (cf. chemins PHP ci-dessous).
           script: |
+            set -e
             cd /home/wqktajhw/liste-musicale
             git pull origin master
-            /usr/local/php8.4/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction
-            /usr/local/php8.4/bin/php bin/console cache:clear --env=prod --no-debug
-            /usr/local/php8.4/bin/php bin/console cache:warmup --env=prod --no-debug
-            /usr/local/php8.4/bin/php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
-            echo "✅ Deployment completed successfully!"
+            # /usr/local/php8.4/bin/php et /usr/local/bin/composer n'existent pas
+            # sur ce mutualise : php est dans le PATH, composer est un .phar au home.
+            php ~/composer.phar install --no-dev --optimize-autoloader --no-interaction
+            php bin/console cache:clear --env=prod --no-debug
+            php bin/console cache:warmup --env=prod --no-debug
+            php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+            echo "Deploiement termine."
